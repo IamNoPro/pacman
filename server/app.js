@@ -104,35 +104,66 @@ async function createMainServer(){
         function handleJoinGame(roomName){
             console.log(roomName)
             const room = io.of("/").adapter.rooms.get(roomName)
-
-            
             if(room === undefined){
                 socket.emit('unknownCode')
                 return
-            } else if(room.size > 1){
-                socket.emit('tooManyPlayers')
-                return
-            }
-
-            socketRooms[socket.id] = roomName;
-            socket.join(roomName)
-            players[socket.id] = {
+            } 
+            else if(room.size === 1){
+                socketRooms[socket.id] = roomName;
+                socket.join(roomName)
+                players[socket.id] = {
                 pacman: new Pacman({
-                    x:31,
+                    x:32,
+                    z:-24,
+                    y:4
+                },{
+                    x:0,
+                    y:0,
+                    z:0,
+                })}
+            }
+            else if(room.size === 2){
+                socketRooms[socket.id] = roomName;
+                socket.join(roomName)
+                players[socket.id] = {
+                pacman: new Pacman({
+                    x:-32,
                     z:24,
                     y:4
                 },{
                     x:0,
                     y:0,
                     z:0,
-                },)}
-            io.sockets.in(roomName).emit("startGame")
-            io.sockets.in(roomName).emit('renderBoard', walls)
-            io.sockets.in(roomName).emit('createPellets', pellets)
-            io.sockets.in(roomName).emit('initGhostPosition', ghost.position)
-            io.sockets.in(roomName).emit('initPacmanPosition', players)
-
-            tick(roomName)
+                })}
+            }
+            else if(room.size === 3){
+                socketRooms[socket.id] = roomName;
+                socket.join(roomName)
+                players[socket.id] = {
+                pacman: new Pacman({
+                    x:32,
+                    z:24,
+                    y:4
+                },{
+                    x:0,
+                    y:0,
+                    z:0,
+                })}
+            }
+            else if(room.size > 3){
+                socket.emit('tooManyPlayers')
+                return
+            }
+            if(room.size > 3){
+                console.log(players)
+                io.sockets.in(roomName).emit("startGame")
+                io.sockets.in(roomName).emit('renderBoard', walls)
+                io.sockets.in(roomName).emit('createPellets', pellets)
+                io.sockets.in(roomName).emit('initGhostPosition', ghost.position)
+                io.sockets.in(roomName).emit('initPacmanPosition', players)
+                tick(roomName)
+            }
+           
         }
 
 
@@ -143,7 +174,7 @@ async function createMainServer(){
             socket.join(roomName)
             players[socket.id] = {
                 pacman: new Pacman({
-                    x:-31,
+                    x:-32,
                     z:-24,
                     y:4
                 },{
@@ -168,13 +199,17 @@ async function createMainServer(){
     })
     function tick(roomName){
         const intervalId = setInterval(() =>{
+            //handleGhostMovement
             if(ghost instanceof Ghost){
                 ghost.updateMovement(walls)
                 io.sockets.in(roomName).emit('ghostUpdatePosition', {x: ghost.position.x, z: ghost.position.z, angle: ghost.angle})
             } 
+            //HandlePlayerMovement && Pellets
             const pelletsToRemove = []
             for(const key in players){
                 const playerPacman = players[key].pacman
+
+                //handle Pellets
                 for(let i = 0; i < pellets.length; i++){
                     const pellet = pellets[i]
                     if(pellet.show && Math.hypot(
@@ -186,7 +221,16 @@ async function createMainServer(){
                         pelletsToRemove.push(pellet)
                     }
                 }
+                //handlePlayerMovement
                 playerPacman.updateMovement(walls)
+
+                //handle Ghost and Player Collision
+                if(Math.hypot(ghost.position.x - playerPacman.position.x,ghost.position.z - playerPacman.position.z) < ghost.radius + playerPacman.radius){
+                    if(ghost.scared){
+                        io.sockets.in(roomName).emit('ghostScared', ghost.position)
+                    }
+                }
+
             }
             io.sockets.in(roomName).emit('pacmanUpdatePosition', players)
             io.sockets.in(roomName).emit('pelletsToRemove', pelletsToRemove)

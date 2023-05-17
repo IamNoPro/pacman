@@ -27,6 +27,7 @@ let walls = []
 let pellets = []
 const players = {}
 
+
 //CONSTANTS
 const socket = io()
 
@@ -181,11 +182,16 @@ function animate(){
 
   //HANDLE GHOST
   if(ghost){
+    socket.on('ghostScared', (position) =>{
+      scene.remove(ghost.model)
+      ghost = null
+    })
     socket.on('ghostUpdatePosition', (backendGhostData) => {
       ghost.updatePosition(backendGhostData)
     })
     ghost.updateDelta(delta)
   }
+
 
   //HANDLE PACMAN
   if(Object.keys(players).length !== 0){
