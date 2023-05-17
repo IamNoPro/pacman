@@ -15,6 +15,8 @@
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.6.1",
-    "socket.io-client": "^4.6.1"
+    "socket.io-client": "^4.6.1",
+    "three": "^0.152.2",
+    "three-csg-ts": "^3.1.13"
   }
 }
