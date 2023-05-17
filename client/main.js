@@ -1,19 +1,94 @@
 import * as THREE from 'three'
 import { io } from 'socket.io-client'
-import {initScene,initCamera,initRenderer, initLights, createGround, renderBoard, loadGhost} from './utils/helperFunctions'
+import {initScene,initCamera,initRenderer, initLights, createGround, renderBoard, loadGhost, loadPacman} from './utils/helperFunctions'
 import {Ghost} from './classes/ghostClass'
+import {Pacman} from './classes/pacmanClass'
 
 //GLOBAL VARIABLES
 let scene, camera, renderer, controls
 let animationId
 let ghost
+let pacman
 let prevtime = 0
 const clock = new THREE.Clock()
 let ghostBackendData
+let lastkey = ''
 let walls = []
+const players = {}
 
 //CONSTANTS
 const socket = io()
+
+//--------------------//
+
+let playerNumber
+let gameActive = false
+
+//--------------------//
+
+socket.on('gameCode', handleGameCode);
+socket.on('unknownCode', handleUnknownCode);
+socket.on('tooManyPlayers', handleTooManyPlayers);
+socket.on('startGame', handleStartGame)
+
+
+
+
+const initialScreen = document.getElementById('initialScreen');
+const initialPage = document.getElementById('initialPage');
+const newGameBtn = document.getElementById('newGameButton');
+const joinGameBtn = document.getElementById('joinGameButton');
+const gameCodeInput = document.getElementById('gameCodeInput');
+const gameCodeDisplay = document.getElementById('gameCodeDisplay');
+const gameScreen = document.getElementById('gameScreen');
+
+
+
+//-------------------//
+//EVENT LISTENERS
+newGameBtn.addEventListener('click', newGame);
+joinGameBtn.addEventListener('click', joinGame);
+
+
+//--------------------DELETE OR MAKE GOOD USE OF IT-----------------------------//
+function newGame(){
+  socket.emit('newGame')
+}
+
+function joinGame(){
+  const code = gameCodeInput.value;
+  socket.emit('joinGame', code);
+
+}
+function handleGameCode(gameCode) {
+  initialScreen.style.display = 'none'
+  gameScreen.style.display = 'block'
+  gameCodeDisplay.innerText = gameCode;
+}
+
+function handleUnknownCode() {
+  initialScreen.style.display = 'block'
+  gameScreen.style.display = 'none'
+  alert('Unknown Game Code')
+}
+
+function handleTooManyPlayers() {
+  initialScreen.style.display = 'block'
+  gameScreen.style.display = 'none'
+  alert('This game is already in progress');
+}
+function handleStartGame(){
+  gameActive = true
+  initialScreen.style.display = "none"
+  gameScreen.style.display = 'none'
+  initialPage.style.display = 'none'
+  main()
+}
+
+
+
+//---------------------------------------------------//
+
 
 
 
@@ -21,6 +96,8 @@ async function main(){
     scene = initScene()
     camera = initCamera()
     renderer = initRenderer()
+    document.body.appendChild(renderer.domElement)
+    
     
     //adding light to the scene
     const {light, dirlight} = initLights()
@@ -39,18 +116,42 @@ async function main(){
     
 
     //init GHOST 
-    const ghostData = await loadGhost()
-    socket.on('initGhostPosition', (backendGhostData) => {
-      ghost = new Ghost(ghostData.model,ghostData.mixer,ghostData.animationMap,'Animation')
-      ghost.model.position.x = backendGhostData.x
-      ghost.model.position.y = backendGhostData.y
-      ghost.model.position.z = backendGhostData.z
+    let initGhostBackendData;
+    socket.on('initGhostPosition', async (backendGhostData) => {
+      console.log('real champions')
+      initGhostBackendData = backendGhostData
+      const ghostModel = await loadGhost()
+      console.log("here")
+      ghost = new Ghost(ghostModel.model,ghostModel.mixer,ghostModel.animationMap,'Animation')
+      ghost.model.position.x = initGhostBackendData.x
+      ghost.model.position.y = initGhostBackendData.y
+      ghost.model.position.z = initGhostBackendData.z
       console.log('ghostPosition')
-
       scene.add(ghost.model)
     })
+    //init Pacman
+    let initPacmanData;
+    socket.on('initPacmanPosition', async (backendPacmanData) =>{
+      console.log('backbackbackPacman',backendPacmanData)
+      initPacmanData = backendPacmanData
+      for(const key in initPacmanData){
+        const backendPacman = initPacmanData[key].pacman
+        const pacmanModel = await loadPacman()
+        const pacman = new Pacman(pacmanModel.model,pacmanModel.mixer,pacmanModel.animationMap, '')
+        pacman.model.position.x = backendPacman.position.x
+        pacman.model.position.y = backendPacman.position.y
+        pacman.model.position.z = backendPacman.position.z
+        pacman.rotateQuaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), backendPacman.angle)
+        pacman.model.quaternion.copy(pacman.rotateQuaternion)
+        players[key] = {pacman: pacman}
+        scene.add(pacman.model)
+      }
+      console.log('frontendPlayers', players)
+      
+    })
     
-
+    
+    
 
     
     animate()
@@ -58,18 +159,52 @@ async function main(){
 
 
 function animate(){
-  const deltaGhost = clock.getDelta()
+  const delta = clock.getDelta()
   if(ghost){
     socket.on('ghostUpdatePosition', (backendGhostData) => {
       ghost.updatePosition(backendGhostData)
-  })
-  ghost.updateDelta(deltaGhost)
+    })
+    ghost.updateDelta(delta)
   }
+  if(Object.keys(players).length !== 0){
+    socket.on('pacmanUpdatePosition', (backendPacmanData) =>{
+      for(const key in players){
+        const pacman = players[key].pacman
+        const backendPacman = backendPacmanData[key].pacman
+        pacman.updatePosition(backendPacman)
+      }
+    })
+    for(const key in players){
+      const pacman = players[key].pacman
+      pacman.updateDelta(delta)
+    }
+  }
+
   renderer.render(scene, camera)
-  animationId = requestAnimationFrame(animate)
-  
-  
+  animationId = requestAnimationFrame(animate) 
 }
 
+window.addEventListener('keydown', ({key}) => {
+  const lowerCaseKey = key.toLowerCase()
+  switch(lowerCaseKey){
+      case 'w':
+          lastkey = "w"
+          break
+      case 'a':
+          lastkey = 'a'
+          
+          break
+      case 's':
+          lastkey = 's'
+          
+          break
+      case 'd':
+          lastkey = 'd'
+          break       
+  }
+  if(['w','a', 's', 'd'].includes(lastkey)){
+    socket.emit('keyPressed', lastkey)
+  }
+})
+
 //RUNNING
-main()

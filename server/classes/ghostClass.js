@@ -26,7 +26,7 @@ export class Ghost {
                      ...this,
                      velocity: {
                          x: this.speed,
-                         y: 0
+                         z: 0
                      }
                  },
                  wall
@@ -39,7 +39,7 @@ export class Ghost {
                      ...this,
                      velocity: {
                          x: -this.speed,
-                         y: 0
+                         z: 0
                      }
                  },
                  wall
@@ -52,7 +52,7 @@ export class Ghost {
                      ...this,
                      velocity: {
                          x: 0,
-                         y: -this.speed
+                         z: -this.speed
                      }
                  },
                  wall
@@ -65,7 +65,7 @@ export class Ghost {
                      ...this,
                      velocity: {
                          x: 0,
-                         y: this.speed
+                         z: this.speed
                      }
                  },
                  wall
@@ -134,25 +134,25 @@ export class Ghost {
 
         switch (this.direction){
             case 'down':
-                this.velocity.y = this.speed
+                this.velocity.z = this.speed
                 this.velocity.x = 0
                 this.angle = 0
                 this.direction = 'down'
                 break
             case 'up':
-                this.velocity.y = -this.speed
+                this.velocity.z = -this.speed
                 this.velocity.x = 0
                 this.angle =  Math.PI
                 this.direction = 'up'
                 break
             case 'right':
-                this.velocity.y = 0
+                this.velocity.z = 0
                 this.velocity.x = this.speed
                 this.angle = Math.PI/2
                 this.direction = 'right'
                 break
             case 'left':
-                this.velocity.y = 0
+                this.velocity.z = 0
                 this.velocity.x = -this.speed
                 this.angle =  -Math.PI/2
                 this.direction = 'left'
@@ -160,7 +160,7 @@ export class Ghost {
         }
         this.stepsTaken ++
         this.position.x += this.velocity.x
-        this.position.z += this.velocity.y
+        this.position.z += this.velocity.z
     }
 
 }

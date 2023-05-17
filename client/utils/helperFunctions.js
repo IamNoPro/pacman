@@ -28,7 +28,7 @@ export function initRenderer(){
     renderer.shadowMap.enabled = true
     renderer.setPixelRatio(window.devicePixelRatio)
     renderer.setSize(window.innerWidth, window.innerHeight)
-    document.body.appendChild(renderer.domElement)
+    // document.body.appendChild(renderer.domElement)
     return renderer
 }
 
@@ -126,6 +126,23 @@ export async function loadGhost(){
   const animationMap = new Map()
   gltfAnimations.forEach((a) => {
         animationMap.set(a.name, mixer.clipAction(a))
+  })
+  return {model,mixer,animationMap}
+}
+
+export async function loadPacman(){
+  const pacmanData = await loader.loadAsync('client/modules/pacman_animated.glb')
+  const model = pacmanData.scene
+
+  model.traverse(function(object){
+      if(object.isMesh) object.castShadow = true
+  })
+  model.scale.set(3,3,3)
+  const gltfAnimations = pacmanData.animations
+  const mixer = new THREE.AnimationMixer(model)
+  const animationMap = new Map()
+  gltfAnimations.forEach((a) => {
+      animationMap.set(a.name, mixer.clipAction(a))
   })
   return {model,mixer,animationMap}
 }
