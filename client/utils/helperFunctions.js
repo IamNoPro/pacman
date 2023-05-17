@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { CSG } from 'three-csg-ts'
 import {Wall} from '../classes/wallClass'
+import {Pellet} from '../classes/pelletClass'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 //CONSTANTS
@@ -110,6 +111,23 @@ export function renderBoard(scene, walls){
         scene.add(frontendWall.mesh)
       }
     } 
+}
+
+//RENDERING PELLETS
+export function renderPellets(scene,backendPellets, pellets){
+  for(let i=0; i < backendPellets.length; i++){
+    const pelletBackend = backendPellets[i];
+    const frontendPellet = new Pellet(i,pelletBackend.position, pelletBackend.show)
+    if(frontendPellet){
+      console.log(frontendPellet)
+      frontendPellet.mesh.position.x = frontendPellet.position.x
+      frontendPellet.mesh.position.y = frontendPellet.position.y
+      frontendPellet.mesh.position.z = frontendPellet.position.z
+      pellets[i] = frontendPellet
+      scene.add(frontendPellet.mesh)
+    }
+
+  }
 }
 
 //Loading Ghost Model

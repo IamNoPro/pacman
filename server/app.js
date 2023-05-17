@@ -6,6 +6,7 @@ import { BOARD, ROWS, COLS, TICK_RATE} from './constants.js'
 import { Wall } from './classes/wallClass.js'
 import {Ghost} from './classes/ghostClass.js'
 import {Pacman} from './classes/pacmanClass.js'
+import {Pellet} from './classes/pelletClass.js'
 import {makeGameCode} from  './utils/makeGameCode.js'
 
 //STATE CONTROLL
@@ -13,6 +14,7 @@ const walls = []
 let ghost;
 const socketRooms = {}
 const players = {}
+const pellets = []
 
 
 //-----------------------------------------------------------//
@@ -36,6 +38,24 @@ function renderBoard(){
         }
     }
 }
+function createPellets(){
+    let counter = 0
+    for(let row = 0; row < ROWS ; row++){
+        for(let col = 0; col < COLS ; col++ ){
+            if(BOARD[row][col] === 1){
+                const pellet = new Pellet(counter)
+                counter++
+                if(pellet){
+                    pellet.position.x = (col * 2 - COLS) * 2 + 4
+                    pellet.position.z = (row * 2 - ROWS) * 2 + 4
+                    pellet.position.y = 2.5
+                    pellets.push(pellet)
+                }
+
+            }
+        }
+    }
+}
 
 
 
@@ -54,6 +74,7 @@ async function createMainServer(){
     app.use(vite.middlewares)
     // app.use(express.static('dist'))
     renderBoard()
+    createPellets()
     ghost = new Ghost({
         x: 8,
         z: 0,
@@ -107,6 +128,7 @@ async function createMainServer(){
                 },)}
             io.sockets.in(roomName).emit("startGame")
             io.sockets.in(roomName).emit('renderBoard', walls)
+            io.sockets.in(roomName).emit('createPellets', pellets)
             io.sockets.in(roomName).emit('initGhostPosition', ghost.position)
             io.sockets.in(roomName).emit('initPacmanPosition', players)
 
@@ -150,11 +172,26 @@ async function createMainServer(){
                 ghost.updateMovement(walls)
                 io.sockets.in(roomName).emit('ghostUpdatePosition', {x: ghost.position.x, z: ghost.position.z, angle: ghost.angle})
             } 
+            const pelletsToRemove = []
             for(const key in players){
                 const playerPacman = players[key].pacman
+                for(let i = 0; i < pellets.length; i++){
+                    const pellet = pellets[i]
+                    if(pellet.show && Math.hypot(
+                        pellet.position.x - playerPacman.position.x, 
+                        pellet.position.z - playerPacman.position.z) < playerPacman.radius
+                    ){
+                        playerPacman.score += pellet.points
+                        pellet.show = false
+                        pelletsToRemove.push(pellet)
+                    }
+                }
                 playerPacman.updateMovement(walls)
             }
             io.sockets.in(roomName).emit('pacmanUpdatePosition', players)
+            io.sockets.in(roomName).emit('pelletsToRemove', pelletsToRemove)
+            
+            
            
 
             
