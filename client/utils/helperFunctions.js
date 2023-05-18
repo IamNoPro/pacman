@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { CSG } from 'three-csg-ts'
 import {Wall} from '../classes/wallClass'
+import {Pellet} from '../classes/pelletClass'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 //CONSTANTS
@@ -8,12 +9,13 @@ const WIDTH = 104
 const HEIGHT = 88
 const DEPTH = 2
 const loader = new GLTFLoader()
+const textureLoader = new THREE.TextureLoader()
 //INITIALZING SCENE
 export function initScene(){
     const scene = new THREE.Scene() 
-    // scene.background = new THREE.TextureLoader().load('/textures/placeholder/background.jpg')
+    scene.background = new THREE.TextureLoader().load('/textures/texture_0.jpeg')
     // scene.backgroundBlurrines = 0.5
-    scene.background = new THREE.Color('white')
+    // scene.background = new THREE.Color('white')
     return scene
 }
 export function initCamera(){
@@ -65,17 +67,15 @@ export function initLights(){
 //CREATING GROUND FOR BOARD
 export function createGround(){
     //THREE JS
-    // const groundTexture = textureLoader.load('textures/placeholder/placeholder.png')
-    // groundTexture.wrapS = THREE.RepeatWrapping
-    // groundTexture.wrap = THREE.RepeatWrapping
-    // groundTexture.repeat.set(48,48)
+    const groundTexture = textureLoader.load('/textures/texture_2.jpeg')
+
     const box = new THREE.Mesh(
-        new THREE.BoxGeometry(WIDTH,HEIGHT,DEPTH),
-        new THREE.MeshStandardMaterial({color: 'gray'})
+        new THREE.BoxGeometry(WIDTH-6,HEIGHT-6,DEPTH-1),
+        new THREE.MeshStandardMaterial({map: groundTexture})
       );
     box.rotation.x = - Math.PI / 2
     const box2 = new THREE.Mesh(
-        new THREE.BoxGeometry(8,8,16),
+        new THREE.BoxGeometry(10,12,20),
         new THREE.MeshBasicMaterial({color:'blue'})
     );
     box2.position.set(-20,0,HEIGHT/2-4)
@@ -98,7 +98,7 @@ export function createGround(){
   }
 //RENDERING BOARD
 export function renderBoard(scene, walls){
-    console.log("walls", walls)
+    
     for(let i = 0; i < walls.length; i++){
       const backendWall = walls[i]
       const frontendWall = new Wall(backendWall.height)
@@ -110,6 +110,22 @@ export function renderBoard(scene, walls){
         scene.add(frontendWall.mesh)
       }
     } 
+}
+
+//RENDERING PELLETS
+export function renderPellets(scene,backendPellets, pellets){
+  for(let i=0; i < backendPellets.length; i++){
+    const pelletBackend = backendPellets[i];
+    const frontendPellet = new Pellet(i,pelletBackend.position, pelletBackend.show)
+    if(frontendPellet){
+      frontendPellet.mesh.position.x = frontendPellet.position.x
+      frontendPellet.mesh.position.y = frontendPellet.position.y
+      frontendPellet.mesh.position.z = frontendPellet.position.z
+      pellets[i] = frontendPellet
+      scene.add(frontendPellet.mesh)
+    }
+
+  }
 }
 
 //Loading Ghost Model

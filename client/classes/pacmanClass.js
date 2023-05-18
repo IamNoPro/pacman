@@ -18,6 +18,7 @@ export class Pacman{
             this.model.position.z = backendPacman.position.z
             this.rotateQuaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), backendPacman.angle)
             this.model.quaternion.copy(this.rotateQuaternion) 
+            this.score = backendPacman.score
         }
     }
     updateDelta(delta){

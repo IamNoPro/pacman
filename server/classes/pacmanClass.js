@@ -9,7 +9,7 @@ export class Pacman {
         this.radius = 3
         this.speed = 0.3
         this.score = 0
-        this.lastkey = ''
+        this.lastkey =''
     }
 
     updateMovement(walls){

@@ -1,6 +1,16 @@
 import * as THREE from 'three'
 import { io } from 'socket.io-client'
-import {initScene,initCamera,initRenderer, initLights, createGround, renderBoard, loadGhost, loadPacman} from './utils/helperFunctions'
+import {
+  initScene,
+  initCamera,
+  initRenderer, 
+  initLights, 
+  createGround, 
+  renderBoard, 
+  loadGhost, 
+  loadPacman,
+  renderPellets
+} from './utils/helperFunctions'
 import {Ghost} from './classes/ghostClass'
 import {Pacman} from './classes/pacmanClass'
 
@@ -14,7 +24,9 @@ const clock = new THREE.Clock()
 let ghostBackendData
 let lastkey = ''
 let walls = []
+let pellets = []
 const players = {}
+
 
 //CONSTANTS
 const socket = io()
@@ -112,6 +124,12 @@ async function main(){
         console.log(walls)
         renderBoard(scene,walls)
     })
+    //adding pellets to the scene
+    socket.on('createPellets', (backendPellets) => {
+      console.log('pellets')
+      renderPellets(scene, backendPellets, pellets)
+      
+    })
     
     
 
@@ -160,12 +178,22 @@ async function main(){
 
 function animate(){
   const delta = clock.getDelta()
+  let pacmanDelta = 0.025
+
+  //HANDLE GHOST
   if(ghost){
+    socket.on('ghostScared', (position) =>{
+      scene.remove(ghost.model)
+      ghost = null
+    })
     socket.on('ghostUpdatePosition', (backendGhostData) => {
       ghost.updatePosition(backendGhostData)
     })
     ghost.updateDelta(delta)
   }
+
+
+  //HANDLE PACMAN
   if(Object.keys(players).length !== 0){
     socket.on('pacmanUpdatePosition', (backendPacmanData) =>{
       for(const key in players){
@@ -176,14 +204,25 @@ function animate(){
     })
     for(const key in players){
       const pacman = players[key].pacman
-      pacman.updateDelta(delta)
+      pacman.updateDelta(pacmanDelta)
     }
   }
+  //HANDLE PELLETS
+  socket.on('pelletsToRemove', (backendPelletsToRemove) =>{
+    for(let i=0; i<backendPelletsToRemove.length; i++){
+      const backendPellet = backendPelletsToRemove[i]
+      const frontendPellet = pellets[backendPellet.id]
+      frontendPellet.show = false
+      scene.remove(frontendPellet.mesh)
+    }
+  })
 
   renderer.render(scene, camera)
   animationId = requestAnimationFrame(animate) 
 }
 
+
+//WINDOW LISTENER
 window.addEventListener('keydown', ({key}) => {
   const lowerCaseKey = key.toLowerCase()
   switch(lowerCaseKey){
@@ -204,6 +243,15 @@ window.addEventListener('keydown', ({key}) => {
   }
   if(['w','a', 's', 'd'].includes(lastkey)){
     socket.emit('keyPressed', lastkey)
+  }
+})
+window.addEventListener('resize', function(){
+  if(renderer){
+    renderer.setSize(innerWidth,innerHeight)
+  }
+  if(camera){
+    camera.aspect =innerWidth/innerHeight
+    camera.updateProjectionMatrix()
   }
 })
 
