@@ -102,13 +102,15 @@ async function createMainServer(){
 
 
         function handleJoinGame(roomName){
-            console.log(roomName)
+            
+            
             const room = io.of("/").adapter.rooms.get(roomName)
+            console.log("room",room)
             if(room === undefined){
                 socket.emit('unknownCode')
                 return
             } 
-            else if(room.size === 1){
+            else if(room.size === 1 && !room.has(socket.id)){
                 socketRooms[socket.id] = roomName;
                 socket.join(roomName)
                 players[socket.id] = {
@@ -120,9 +122,11 @@ async function createMainServer(){
                     x:0,
                     y:0,
                     z:0,
-                })}
+                }),
+                playerNumber: 2
             }
-            else if(room.size === 2){
+            }
+            else if(room.size === 2 && !room.has(socket.id)){
                 socketRooms[socket.id] = roomName;
                 socket.join(roomName)
                 players[socket.id] = {
@@ -134,9 +138,11 @@ async function createMainServer(){
                     x:0,
                     y:0,
                     z:0,
-                })}
+                }),
+                playerNumber: 3
             }
-            else if(room.size === 3){
+            }
+            else if(room.size === 3 && !room.has(socket.id)){
                 socketRooms[socket.id] = roomName;
                 socket.join(roomName)
                 players[socket.id] = {
@@ -148,14 +154,14 @@ async function createMainServer(){
                     x:0,
                     y:0,
                     z:0,
-                })}
-            }
+                }),
+                playerNumber: 4
+            }}
             else if(room.size > 3){
                 socket.emit('tooManyPlayers')
                 return
             }
             if(room.size > 3){
-                console.log(players)
                 io.sockets.in(roomName).emit("startGame")
                 io.sockets.in(roomName).emit('renderBoard', walls)
                 io.sockets.in(roomName).emit('createPellets', pellets)
@@ -163,7 +169,8 @@ async function createMainServer(){
                 io.sockets.in(roomName).emit('initPacmanPosition', players)
                 tick(roomName)
             }
-           
+           console.log("room", room)
+           console.log("players", players)
         }
 
 
@@ -181,7 +188,8 @@ async function createMainServer(){
                     x:0,
                     y:0,
                     z:0,
-                })
+                }),
+                playerNumber: 1
             }
             
 

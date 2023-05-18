@@ -245,5 +245,14 @@ window.addEventListener('keydown', ({key}) => {
     socket.emit('keyPressed', lastkey)
   }
 })
+window.addEventListener('resize', function(){
+  if(renderer){
+    renderer.setSize(innerWidth,innerHeight)
+  }
+  if(camera){
+    camera.aspect =innerWidth/innerHeight
+    camera.updateProjectionMatrix()
+  }
+})
 
 //RUNNING
