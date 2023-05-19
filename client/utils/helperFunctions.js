@@ -20,8 +20,8 @@ export function initScene(){
 }
 export function initCamera(){
     const camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,200)
-    camera.position.set(0,100,60)
-    camera.rotation.set(-Math.PI/3, 0, 0)
+    camera.position.set(0,82,84)
+    camera.rotation.set(-Math.PI/4, 0, 0)
     return camera
 }
 
@@ -130,7 +130,7 @@ export function renderPellets(scene,backendPellets, pellets){
 
 //Loading Ghost Model
 export async function loadGhost(){
-  const ghostData = await loader.loadAsync('client/modules/ghost_purpleusdz.glb')
+  const ghostData = await loader.loadAsync('/modules/ghost_purpleusdz.glb')
   const model = ghostData.scene
   
   model.traverse(function(object){
@@ -147,7 +147,7 @@ export async function loadGhost(){
 }
 
 export async function loadPacman(){
-  const pacmanData = await loader.loadAsync('client/modules/pacman_animated.glb')
+  const pacmanData = await loader.loadAsync('/modules/pacman_animated.glb')
   const model = pacmanData.scene
 
   model.traverse(function(object){

@@ -2,7 +2,7 @@ import express from  'express'
 import http from  'http'
 import { Server } from  'socket.io'
 import {createServer} from 'vite'
-import { BOARD, ROWS, COLS, TICK_RATE} from './constants.js'
+import { BOARD, ROWS, COLS, TICK_RATE} from './utils/constants.js'
 import { Wall } from './classes/wallClass.js'
 import {Ghost} from './classes/ghostClass.js'
 import {Pacman} from './classes/pacmanClass.js'
@@ -19,7 +19,7 @@ const pellets = []
 
 //-----------------------------------------------------------//
 
-
+//put renderBoard and CreatePellets into utils folder
 function renderBoard(){
     for(let row = 0; row < ROWS; row++){
         for(let col = 0; col < COLS; col++){
@@ -209,7 +209,9 @@ async function createMainServer(){
         const intervalId = setInterval(() =>{
             //handleGhostMovement
             if(ghost instanceof Ghost){
-                ghost.updateMovement(walls)
+                if(!ghost.stop){
+                    ghost.updateMovement(walls)
+                }
                 io.sockets.in(roomName).emit('ghostUpdatePosition', {x: ghost.position.x, z: ghost.position.z, angle: ghost.angle})
             } 
             //HandlePlayerMovement && Pellets
@@ -229,17 +231,52 @@ async function createMainServer(){
                         pelletsToRemove.push(pellet)
                     }
                 }
-                //handlePlayerMovement
-                playerPacman.updateMovement(walls)
 
                 //handle Ghost and Player Collision
                 if(Math.hypot(ghost.position.x - playerPacman.position.x,ghost.position.z - playerPacman.position.z) < ghost.radius + playerPacman.radius){
                     if(ghost.scared){
-                        io.sockets.in(roomName).emit('ghostScared', ghost.position)
+                        ghost.position.x = 0
+                        ghost.position.z = 0
+                        ghost.stop = true
+                        setTimeout(() => {
+                            ghost.stop = false
+                        }, 2000)
                     }
                 }
-
+                
+                //handlePlayerMovement
+                if(!playerPacman.collisionWithPacman){
+                    playerPacman.updateMovement(walls)
+                }
             }
+            
+
+            //Handle Pacman to Pacman Collision
+            for(const player1key in players){
+                const player = players[player1key].pacman
+                if(player.collisionWithPacman){
+                    continue
+                }
+                for(const player2key in players){
+                    if(player2key !== player1key ){
+                        const player2 = players[player2key].pacman
+                        if(Math.hypot(player.position.x - player2.position.x,player.position.z - player2.position.z) < (player.radius + player2.radius)){
+                            player.collisionWithPacman = true
+                            player2.collisionWithPacman = true
+                            console.log('whyyy')
+                            io.sockets.in(roomName).emit('pacmanToPacmanCollision', [player1key,player2key])
+                            player.updateLastKey()
+                            player2.updateLastKey()
+                            setTimeout(() => {
+                                player.collisionWithPacman = false
+                                player2.collisionWithPacman = false
+                            },5000)
+                        }
+                    }
+                }
+            }
+            
+            
             io.sockets.in(roomName).emit('pacmanUpdatePosition', players)
             io.sockets.in(roomName).emit('pelletsToRemove', pelletsToRemove)
             

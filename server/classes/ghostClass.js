@@ -14,6 +14,7 @@ export class Ghost {
         this.threshold = Math.floor(Math.random() * 314) + 159
         this.threshold2 = Math.floor(Math.random() * 314) + 159
         this.angle = 0
+        this.stop = false
 
     }
 
