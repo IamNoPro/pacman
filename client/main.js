@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as TWEEN from '@tweenjs/tween.js'
 import { io } from 'socket.io-client'
 import {
   initScene,
@@ -17,31 +18,36 @@ import {Pacman} from './classes/pacmanClass'
 //GLOBAL VARIABLES
 let scene, camera, renderer, controls
 let animationId
-let ghost
+let ghost = null
 let pacman
 let prevtime = 0
 const clock = new THREE.Clock()
-let ghostBackendData
 let lastkey = ''
 let walls = []
 let pellets = []
 const players = {}
-
-
-//CONSTANTS
 const socket = io()
-
-//--------------------//
-
-let playerNumber
 let gameActive = false
+let ghostBackendData
 
-//--------------------//
+
+
+
+//---------SOCKET-----------//
 
 socket.on('gameCode', handleGameCode);
 socket.on('unknownCode', handleUnknownCode);
 socket.on('tooManyPlayers', handleTooManyPlayers);
-socket.on('startGame', handleStartGame)
+socket.on('startGame', handleStartGame);
+socket.on('ghostUpdatePosition',handleBackendGhostData);
+// socket.on('ghostScared', handleGhostScared);
+socket.on('pacmanToPacmanCollision', handlePacmanToPacmanCollision);
+socket.on('pacmanUpdatePosition',handlePacmanUpdatePosition);
+socket.on('pelletsToRemove', handlePellets);
+
+
+
+//---------------------//
 
 
 
@@ -96,6 +102,38 @@ function handleStartGame(){
   initialPage.style.display = 'none'
   main()
 }
+function handleBackendGhostData(backendGhostData){
+  ghostBackendData = backendGhostData
+  ghost?.updatePosition(ghostBackendData)
+}
+// function handleGhostScared(data){
+//   scene?.remove(ghost?.model)
+//   ghost = null
+// }
+function handlePacmanToPacmanCollision(data){
+  for(let i =0; i< data?.length; i++){
+    const playerPacman = players[data[i]]?.pacman
+    console.log(playerPacman)
+    playerPacman?.animateCollision()
+  }
+}
+function handlePacmanUpdatePosition(backendPacmanData){
+  if(Object.keys(players).length !==0){
+    for(const key in players){
+      const pacman = players[key].pacman
+      const backendPacman = backendPacmanData[key].pacman
+      pacman.updatePosition(backendPacman)
+    }
+  }
+}
+function handlePellets(backendPelletsToRemove){
+  for(let i=0; i<backendPelletsToRemove.length; i++){
+    const backendPellet = backendPelletsToRemove[i]
+    const frontendPellet = pellets[backendPellet.id]
+    frontendPellet.show = false
+    scene.remove(frontendPellet.mesh)
+  }
+}
 
 
 
@@ -127,8 +165,7 @@ async function main(){
     //adding pellets to the scene
     socket.on('createPellets', (backendPellets) => {
       console.log('pellets')
-      renderPellets(scene, backendPellets, pellets)
-      
+      renderPellets(scene, backendPellets, pellets) 
     })
     
     
@@ -168,55 +205,28 @@ async function main(){
       
     })
     
-    
-    
-
-    
     animate()
 }
 
 
 function animate(){
+  TWEEN.update()
   const delta = clock.getDelta()
   let pacmanDelta = 0.025
 
   //HANDLE GHOST
-  if(ghost){
-    socket.on('ghostScared', (position) =>{
-      scene.remove(ghost.model)
-      ghost = null
-    })
-    socket.on('ghostUpdatePosition', (backendGhostData) => {
-      ghost.updatePosition(backendGhostData)
-    })
-    ghost.updateDelta(delta)
+  if(ghost !== null){
+    ghost?.updateDelta(delta)
   }
-
 
   //HANDLE PACMAN
   if(Object.keys(players).length !== 0){
-    socket.on('pacmanUpdatePosition', (backendPacmanData) =>{
-      for(const key in players){
-        const pacman = players[key].pacman
-        const backendPacman = backendPacmanData[key].pacman
-        pacman.updatePosition(backendPacman)
-      }
-    })
     for(const key in players){
       const pacman = players[key].pacman
       pacman.updateDelta(pacmanDelta)
     }
   }
   //HANDLE PELLETS
-  socket.on('pelletsToRemove', (backendPelletsToRemove) =>{
-    for(let i=0; i<backendPelletsToRemove.length; i++){
-      const backendPellet = backendPelletsToRemove[i]
-      const frontendPellet = pellets[backendPellet.id]
-      frontendPellet.show = false
-      scene.remove(frontendPellet.mesh)
-    }
-  })
-
   renderer.render(scene, camera)
   animationId = requestAnimationFrame(animate) 
 }
@@ -245,6 +255,8 @@ window.addEventListener('keydown', ({key}) => {
     socket.emit('keyPressed', lastkey)
   }
 })
+
+
 window.addEventListener('resize', function(){
   if(renderer){
     renderer.setSize(innerWidth,innerHeight)

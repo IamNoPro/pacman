@@ -10,6 +10,19 @@ export class Pacman {
         this.speed = 0.3
         this.score = 0
         this.lastkey =''
+        this.collisionWithPacman = false
+    }
+
+    updateLastKey(){
+        if(this.angle === 0){
+            this.lastkey = 'w'
+        } else if(this.angle === Math.PI){
+            this.lastkey = 's'
+        } else if(this.angle === Math.PI / 2){
+            this.lastkey = 'a'
+        } else if(this.angle === -Math.PI / 2){
+            this.lastkey = 'd'
+        }
     }
 
     updateMovement(walls){
