@@ -162,3 +162,20 @@ export async function loadPacman(){
   })
   return {model,mixer,animationMap}
 }
+
+export async function loadAlien(){
+  const alienData = await loader.loadAsync('/modules/scanner_droid.glb')
+  const model = alienData.scene
+  model.traverse(function(object){
+    if(object.isMesh) object.castShadow = true
+  })
+  model.scale.set(0.04,0.04,0.04)
+  const gltfAnimations = alienData.animations
+  const mixer = new THREE.AnimationMixer(model)
+  const animationMap = new Map()
+  gltfAnimations.forEach((a) => {
+      animationMap.set(a.name, mixer.clipAction(a))
+  })
+  return {model,mixer,animationMap}
+  
+}
