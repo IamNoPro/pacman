@@ -7,11 +7,14 @@ import { Wall } from './classes/wallClass.js'
 import {Ghost} from './classes/ghostClass.js'
 import {Pacman} from './classes/pacmanClass.js'
 import {Pellet} from './classes/pelletClass.js'
+import {Alien} from './classes/alienClass.js'
 import {makeGameCode} from  './utils/makeGameCode.js'
 
 //STATE CONTROLL
 const walls = []
 let ghost;
+let alien;
+let stopEverything = false
 const socketRooms = {}
 const players = {}
 const pellets = []
@@ -82,6 +85,11 @@ async function createMainServer(){
     },{
         x: 0,
         z: 0.2,
+    })
+    alien = new Alien({
+        x: 0,
+        z: 0,
+        y: 30
     })
 
     //-------------------------------------------//
@@ -167,7 +175,9 @@ async function createMainServer(){
                 io.sockets.in(roomName).emit('createPellets', pellets)
                 io.sockets.in(roomName).emit('initGhostPosition', ghost.position)
                 io.sockets.in(roomName).emit('initPacmanPosition', players)
+                io.sockets.in(roomName).emit('initAlienPosition', alien.position)
                 tick(roomName)
+                tickAlien(roomName)
             }
            console.log("room", room)
            console.log("players", players)
@@ -205,8 +215,27 @@ async function createMainServer(){
     server.listen(3000, ()=>{
         console.log('server listening on port 3000')
     })
+    function tickAlien(roomName){
+        const intervalId = setInterval(() =>{
+            if(stopEverything){
+                return
+            }
+            if(alien instanceof Alien){
+                
+                alien.getRandomPosition()
+                io.sockets.in(roomName).emit('alienUpdatePosition', alien.position)
+                    
+                
+                
+                
+            }
+        },5000)
+    }
     function tick(roomName){
         const intervalId = setInterval(() =>{
+            if(stopEverything){
+                return
+            }
             //handleGhostMovement
             if(ghost instanceof Ghost){
                 if(!ghost.stop){
@@ -214,33 +243,52 @@ async function createMainServer(){
                 }
                 io.sockets.in(roomName).emit('ghostUpdatePosition', {x: ghost.position.x, z: ghost.position.z, angle: ghost.angle})
             } 
+        
+        
             //HandlePlayerMovement && Pellets
             const pelletsToRemove = []
             for(const key in players){
                 const playerPacman = players[key].pacman
 
                 //handle Pellets
-                for(let i = 0; i < pellets.length; i++){
-                    const pellet = pellets[i]
-                    if(pellet.show && Math.hypot(
-                        pellet.position.x - playerPacman.position.x, 
-                        pellet.position.z - playerPacman.position.z) < playerPacman.radius
-                    ){
-                        playerPacman.score += pellet.points
-                        pellet.show = false
-                        pelletsToRemove.push(pellet)
+                if(!playerPacman.isGhost){
+                    for(let i = 0; i < pellets.length; i++){
+                        const pellet = pellets[i]
+                        if(pellet.show && Math.hypot(
+                            pellet.position.x - playerPacman.position.x, 
+                            pellet.position.z - playerPacman.position.z) < playerPacman.radius
+                        ){
+                            playerPacman.score += pellet.points
+                            pellet.show = false
+                            pelletsToRemove.push(pellet)
+                        }
                     }
                 }
 
                 //handle Ghost and Player Collision
-                if(Math.hypot(ghost.position.x - playerPacman.position.x,ghost.position.z - playerPacman.position.z) < ghost.radius + playerPacman.radius){
-                    if(ghost.scared){
-                        ghost.position.x = 0
-                        ghost.position.z = 0
-                        ghost.stop = true
-                        setTimeout(() => {
-                            ghost.stop = false
-                        }, 2000)
+                if(!playerPacman.isGhost){
+                    if(Math.hypot(ghost.position.x - playerPacman.position.x,ghost.position.z - playerPacman.position.z) < ghost.radius + playerPacman.radius){
+                        if(ghost.scared){
+                            ghost.position.x = 0
+                            ghost.position.z = 0
+                            ghost.stop = true
+                            setTimeout(() => {
+                                ghost.stop = false
+                            }, 2000)
+                        } else {
+                            stopEverything = true
+                            
+                            
+                            io.sockets.in(roomName).emit('pacmanDied',key)
+                            setTimeout(() =>{
+                                playerPacman.position.x = 0
+                                playerPacman.position.z = 0
+                                alien.position.x = 0
+                                alien.position.z = 0
+                                playerPacman.isGhost = true
+                                stopEverything = false
+                            },20000)
+                        }
                     }
                 }
                 
@@ -257,20 +305,36 @@ async function createMainServer(){
                 if(player.collisionWithPacman){
                     continue
                 }
+                if(player.isGhost){
+                    continue
+                }
                 for(const player2key in players){
                     if(player2key !== player1key ){
                         const player2 = players[player2key].pacman
                         if(Math.hypot(player.position.x - player2.position.x,player.position.z - player2.position.z) < (player.radius + player2.radius)){
-                            player.collisionWithPacman = true
-                            player2.collisionWithPacman = true
-                            console.log('whyyy')
-                            io.sockets.in(roomName).emit('pacmanToPacmanCollision', [player1key,player2key])
-                            player.updateLastKey()
-                            player2.updateLastKey()
-                            setTimeout(() => {
-                                player.collisionWithPacman = false
-                                player2.collisionWithPacman = false
-                            },5000)
+                            if(player2.isGhost){
+                                stopEverything = true
+                                io.sockets.in(roomName).emit('pacmanDied',player1key)
+                                setTimeout(() =>{
+                                    player.position.x = 0
+                                    player.position.z = 0
+                                    alien.position.x = 0
+                                    alien.position.z = 0
+                                    player.isGhost = true
+                                    stopEverything = false
+                                },20000)
+                            } else {    
+                                player.collisionWithPacman = true
+                                player2.collisionWithPacman = true
+                                console.log('whyyy')
+                                io.sockets.in(roomName).emit('pacmanToPacmanCollision', [player1key,player2key])
+                                player.updateLastKey()
+                                player2.updateLastKey()
+                                setTimeout(() => {
+                                    player.collisionWithPacman = false
+                                    player2.collisionWithPacman = false
+                                },5000)
+                            }
                         }
                     }
                 }

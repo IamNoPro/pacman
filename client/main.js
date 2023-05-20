@@ -10,25 +10,34 @@ import {
   renderBoard, 
   loadGhost, 
   loadPacman,
-  renderPellets
+  renderPellets,
+  loadAlien
 } from './utils/helperFunctions'
 import {Ghost} from './classes/ghostClass'
 import {Pacman} from './classes/pacmanClass'
+import {Alien} from './classes/alienClass'
 
 //GLOBAL VARIABLES
 let scene, camera, renderer, controls
 let animationId
 let ghost = null
+let alien = null
 let pacman
 let prevtime = 0
-const clock = new THREE.Clock()
 let lastkey = ''
 let walls = []
 let pellets = []
-const players = {}
-const socket = io()
 let gameActive = false
 let ghostBackendData
+
+const pacmanDelta = 0.025
+const alienDelta = 0.04
+const players = {}
+const clock = new THREE.Clock()
+
+
+const socket = io()
+
 
 
 
@@ -44,6 +53,8 @@ socket.on('ghostUpdatePosition',handleBackendGhostData);
 socket.on('pacmanToPacmanCollision', handlePacmanToPacmanCollision);
 socket.on('pacmanUpdatePosition',handlePacmanUpdatePosition);
 socket.on('pelletsToRemove', handlePellets);
+socket.on('alienUpdatePosition', handleAlienUpdatePosition)
+socket.on('pacmanDied', handlePacmanDied)
 
 
 
@@ -135,6 +146,14 @@ function handlePellets(backendPelletsToRemove){
   }
 }
 
+function handleAlienUpdatePosition(alienBackendPosition){
+  alien?.updatePosition(alienBackendPosition)
+}
+function handlePacmanDied(pacmanKey){
+  const pacman = players[pacmanKey].pacman
+  alien.getPacman(pacman, scene)
+}
+
 
 
 //---------------------------------------------------//
@@ -170,10 +189,22 @@ async function main(){
     
     
 
+    //init ALIEN
+    socket.on('initAlienPosition', async (backendAlienData) =>{
+        const alienModel = await loadAlien()
+        alien = new Alien(alienModel.model,alienModel.mixer,alienModel.animationMap, "CINEMA_4D_Main")
+        alien.model.position.x = backendAlienData.x
+        alien.model.position.y = backendAlienData.y
+        alien.model.position.z = backendAlienData.z
+        scene.add(alien.model)
+        alien.coneMesh.visible = false
+        scene.add(alien.coneMesh)
+    })
+
+
     //init GHOST 
     let initGhostBackendData;
     socket.on('initGhostPosition', async (backendGhostData) => {
-      console.log('real champions')
       initGhostBackendData = backendGhostData
       const ghostModel = await loadGhost()
       console.log("here")
@@ -181,7 +212,6 @@ async function main(){
       ghost.model.position.x = initGhostBackendData.x
       ghost.model.position.y = initGhostBackendData.y
       ghost.model.position.z = initGhostBackendData.z
-      console.log('ghostPosition')
       scene.add(ghost.model)
     })
     //init Pacman
@@ -204,6 +234,7 @@ async function main(){
       console.log('frontendPlayers', players)
       
     })
+
     
     animate()
 }
@@ -212,8 +243,7 @@ async function main(){
 function animate(){
   TWEEN.update()
   const delta = clock.getDelta()
-  let pacmanDelta = 0.025
-
+  
   //HANDLE GHOST
   if(ghost !== null){
     ghost?.updateDelta(delta)
@@ -226,7 +256,11 @@ function animate(){
       pacman.updateDelta(pacmanDelta)
     }
   }
-  //HANDLE PELLETS
+
+  //HANDLE ALIEN
+  if(alien !==null){
+    alien.updateDelta(alienDelta)
+  }
   renderer.render(scene, camera)
   animationId = requestAnimationFrame(animate) 
 }

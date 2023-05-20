@@ -11,6 +11,8 @@ export class Pacman {
         this.score = 0
         this.lastkey =''
         this.collisionWithPacman = false
+        this.isGhost = false
+        this.scared = false
     }
 
     updateLastKey(){

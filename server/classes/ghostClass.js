@@ -5,7 +5,7 @@ export class Ghost {
     constructor(position,velocity){
         this.position = position
         this.velocity = velocity
-        this.scared = true
+        this.scared = false
         this.speed = 0.3
         this.radius = 3
         this.direction = 'down'
