@@ -55,6 +55,7 @@ socket.on('pacmanUpdatePosition',handlePacmanUpdatePosition);
 socket.on('pelletsToRemove', handlePellets);
 socket.on('alienUpdatePosition', handleAlienUpdatePosition)
 socket.on('pacmanDied', handlePacmanDied)
+socket.on('gameEnd', handleGameEnd)
 
 
 
@@ -68,9 +69,21 @@ const initialPage = document.getElementById('initialPage');
 const newGameBtn = document.getElementById('newGameButton');
 const joinGameBtn = document.getElementById('joinGameButton');
 const gameCodeInput = document.getElementById('gameCodeInput');
-const gameCodeDisplay = document.getElementById('gameCodeDisplay');
-const gameScreen = document.getElementById('gameScreen');
+const canvasContainer = document.getElementById('canvasContainer')
 
+//do not code like this
+const playerOneName = document.getElementById('playerName1')
+const playerTwoName = document.getElementById('playerName2')
+const playerThreeName = document.getElementById('playerName3')
+const playerFourName = document.getElementById('playerName4')
+const playerOneAvatar = document.getElementById('playerAvatar1')
+const playerTwoAvatar = document.getElementById('playerAvatar2')
+const playerThreeAvatar = document.getElementById('playerAvatar3')
+const playerFourAvatar = document.getElementById('playerAvatar4')
+const playerOneScore = document.getElementById('playerScore1')
+const playerTwoScore = document.getElementById('playerScore2')
+const playerThreeScore = document.getElementById('playerScore3')
+const playerFourScore = document.getElementById('playerScore4')
 
 
 //-------------------//
@@ -86,32 +99,45 @@ function newGame(){
 
 function joinGame(){
   const code = gameCodeInput.value;
+  initialScreen.style.display = 'none'
   socket.emit('joinGame', code);
+  handleNotification('Please wait for others to join')
 
 }
 function handleGameCode(gameCode) {
   initialScreen.style.display = 'none'
-  gameScreen.style.display = 'block'
-  gameCodeDisplay.innerText = gameCode;
+  handleNotification(
+    `Your game code is: ${gameCode}`
+  )
 }
 
 function handleUnknownCode() {
-  initialScreen.style.display = 'block'
-  gameScreen.style.display = 'none'
-  alert('Unknown Game Code')
+  initialScreen.style.display = 'none'
+  
+  handleNotification('Unknown Code, Please enter valid code', 4000)
+  setTimeout(() =>{
+    initialScreen.style.display = 'flex'
+  }, 4000)
 }
 
 function handleTooManyPlayers() {
-  initialScreen.style.display = 'block'
-  gameScreen.style.display = 'none'
-  alert('This game is already in progress');
+  initialScreen.style.display = 'none'
+  handleNotification('Game is already in progress, join another game', 4000)
+  setTimeout(() =>{
+    initialScreen.style.display = 'flex'
+  }, 4000)
+  
 }
 function handleStartGame(){
   gameActive = true
-  initialScreen.style.display = "none"
-  gameScreen.style.display = 'none'
   initialPage.style.display = 'none'
+  canvasContainer.style.display = 'block'
   main()
+  handleNotification(
+    'Welcome to Pacman Battle for the last, game starts in a few seconds', 10000
+  )
+  
+  
 }
 function handleBackendGhostData(backendGhostData){
   ghostBackendData = backendGhostData
@@ -134,6 +160,16 @@ function handlePacmanUpdatePosition(backendPacmanData){
       const pacman = players[key].pacman
       const backendPacman = backendPacmanData[key].pacman
       pacman.updatePosition(backendPacman)
+      //handleScoreBoard
+      if(backendPacmanData[key].playerNumber === 'One'){
+        playerOneScore.innerHTML = backendPacmanData[key].pacman.score
+      } else if(backendPacmanData[key].playerNumber === 'Two'){
+        playerTwoScore.innerHTML = backendPacmanData[key].pacman.score
+      } else if(backendPacmanData[key].playerNumber === 'Three'){
+        playerThreeScore.innerHTML = backendPacmanData[key].pacman.score
+      } else if(backendPacmanData[key].playerNumber === 'Four'){
+        playerFourScore.innerHTML = backendPacmanData[key].pacman.score
+      }
     }
   }
 }
@@ -152,6 +188,40 @@ function handleAlienUpdatePosition(alienBackendPosition){
 function handlePacmanDied(pacmanKey){
   const pacman = players[pacmanKey].pacman
   alien.getPacman(pacman, scene)
+  handleNotification(
+    "Pacman Died, wait until it revives as a Ghost!!!",
+    14000
+  )
+}
+
+function handleNotification(message,duration = null){
+  const notification = document.getElementById('notification');
+  const notificationText = document.getElementById('notificationText');
+  notificationText.textContent = message;
+
+  notification.classList.add('show');
+  if(duration){
+    setTimeout(function() {
+    notification.classList.remove('show');
+  }, duration);
+  }
+}
+function handleNotificationRemove(){
+  const notification = document.getElementById('notification');
+  notification.classList.remove('show');
+}
+
+
+function handleGameEnd(winnerKey){
+  if(socket.id === winnerKey){
+    handleNotification(
+      'Congratulations!!! You are the winner!!!'
+    )
+  } else{
+    handleNotification(
+      'You lost, better luck next time!!!'
+    )
+  }
 }
 
 
@@ -165,7 +235,7 @@ async function main(){
     scene = initScene()
     camera = initCamera()
     renderer = initRenderer()
-    document.body.appendChild(renderer.domElement)
+    canvasContainer.appendChild(renderer.domElement)
     
     
     //adding light to the scene
@@ -206,7 +276,7 @@ async function main(){
     let initGhostBackendData;
     socket.on('initGhostPosition', async (backendGhostData) => {
       initGhostBackendData = backendGhostData
-      const ghostModel = await loadGhost()
+      const ghostModel = await loadGhost('purple')
       console.log("here")
       ghost = new Ghost(ghostModel.model,ghostModel.mixer,ghostModel.animationMap,'Animation')
       ghost.model.position.x = initGhostBackendData.x
@@ -221,8 +291,8 @@ async function main(){
       initPacmanData = backendPacmanData
       for(const key in initPacmanData){
         const backendPacman = initPacmanData[key].pacman
-        const pacmanModel = await loadPacman()
-        const pacman = new Pacman(pacmanModel.model,pacmanModel.mixer,pacmanModel.animationMap, '')
+        const pacmanModel = await loadPacman(initPacmanData[key].color)
+        const pacman = new Pacman(pacmanModel.model,pacmanModel.mixer,pacmanModel.animationMap, '', initPacmanData[key].color)
         pacman.model.position.x = backendPacman.position.x
         pacman.model.position.y = backendPacman.position.y
         pacman.model.position.z = backendPacman.position.z
@@ -230,6 +300,30 @@ async function main(){
         pacman.model.quaternion.copy(pacman.rotateQuaternion)
         players[key] = {pacman: pacman}
         scene.add(pacman.model)
+
+
+        //InitScoreBoard
+        if(initPacmanData[key].playerNumber === 'One'){
+          playerOneAvatar.style.background = `linear-gradient(135deg, ${initPacmanData[key].color}, #ffbf69)`
+        } else if(initPacmanData[key].playerNumber === 'Two'){
+          playerTwoAvatar.style.background = `linear-gradient(135deg, ${initPacmanData[key].color}, #ffbf69)`
+        } else if(initPacmanData[key].playerNumber === 'Three'){
+          playerThreeAvatar.style.background = `linear-gradient(135deg, ${initPacmanData[key].color}, #ffbf69)`
+        } else if(initPacmanData[key].playerNumber === 'Four'){
+          playerFourAvatar.style.background = `linear-gradient(135deg, ${initPacmanData[key].color}, #ffbf69)`
+        }
+        if(socket.id === key){
+          if(initPacmanData[key].playerNumber === 'One'){
+            playerOneName.innerHTML = 'You'
+          } else if(initPacmanData[key].playerNumber === 'Two'){
+            playerTwoName.innerHTML = 'You'
+          } else if(initPacmanData[key].playerNumber === 'Three'){
+            playerThreeName.innerHTML = 'You'
+          } else if(initPacmanData[key].playerNumber === 'Four'){
+            playerFourName.innerHTML = 'You'
+          }
+        }
+
       }
       console.log('frontendPlayers', players)
       

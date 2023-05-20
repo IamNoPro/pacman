@@ -4,7 +4,7 @@ import {loadGhost} from '../utils/helperFunctions'
 
 
 export class Pacman{
-    constructor(model, mixer, animationsMap, currentAction){
+    constructor(model, mixer, animationsMap, currentAction,color = 'purple'){
         this.model = model
         this.mixer = mixer
         this.animationsMap = animationsMap
@@ -15,6 +15,7 @@ export class Pacman{
         this.animateCollisionStarted = false
         this.isGhost = false
         this.scared = false
+        this.color = color
         
     }
     
@@ -96,7 +97,7 @@ export class Pacman{
         })
     }
     async initiateGhost(scene,callBack){
-        const ghostModel = await loadGhost()
+        const ghostModel = await loadGhost(this.color)
         this.model = ghostModel.model
         this.mixer = ghostModel.mixer
         this.animationsMap = ghostModel.animationMap
