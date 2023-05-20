@@ -256,7 +256,7 @@ async function createMainServer(){
                 let winnerKey
                 for(const keys in players){
                     if(!players[keys].pacman.isGhost){
-                        winnerKey = key
+                        winnerKey = keys
                     }
                 }
                 io.sockets.in(roomName).emit('gameEnd', winnerKey)
