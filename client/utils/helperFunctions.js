@@ -129,8 +129,8 @@ export function renderPellets(scene,backendPellets, pellets){
 }
 
 //Loading Ghost Model
-export async function loadGhost(){
-  const ghostData = await loader.loadAsync('/modules/ghost_purpleusdz.glb')
+export async function loadGhost(color){
+  const ghostData = await loader.loadAsync(`/modules/ghost_${color}.glb`)
   const model = ghostData.scene
   
   model.traverse(function(object){
@@ -146,8 +146,8 @@ export async function loadGhost(){
   return {model,mixer,animationMap}
 }
 
-export async function loadPacman(){
-  const pacmanData = await loader.loadAsync('/modules/pacman_animated.glb')
+export async function loadPacman(color){
+  const pacmanData = await loader.loadAsync(`/modules/pacman_${color}.glb`)
   const model = pacmanData.scene
 
   model.traverse(function(object){

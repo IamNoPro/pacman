@@ -18,6 +18,8 @@ let stopEverything = false
 const socketRooms = {}
 const players = {}
 const pellets = []
+let endCondition  = false
+
 
 
 //-----------------------------------------------------------//
@@ -105,7 +107,10 @@ async function createMainServer(){
 
         function handleKeyPressed(lastkey){
             const playerPacman = players[socket.id]?.pacman
-            playerPacman.lastkey = lastkey
+            if(playerPacman){
+                playerPacman.lastkey = lastkey
+            }
+            
         }
 
 
@@ -131,7 +136,8 @@ async function createMainServer(){
                     y:0,
                     z:0,
                 }),
-                playerNumber: 2
+                playerNumber: 'Two',
+                color: 'yellow'
             }
             }
             else if(room.size === 2 && !room.has(socket.id)){
@@ -147,7 +153,8 @@ async function createMainServer(){
                     y:0,
                     z:0,
                 }),
-                playerNumber: 3
+                playerNumber: 'Three',
+                color: 'skyblue'
             }
             }
             else if(room.size === 3 && !room.has(socket.id)){
@@ -163,7 +170,8 @@ async function createMainServer(){
                     y:0,
                     z:0,
                 }),
-                playerNumber: 4
+                playerNumber: 'Four',
+                color: 'red'
             }}
             else if(room.size > 3){
                 socket.emit('tooManyPlayers')
@@ -176,8 +184,11 @@ async function createMainServer(){
                 io.sockets.in(roomName).emit('initGhostPosition', ghost.position)
                 io.sockets.in(roomName).emit('initPacmanPosition', players)
                 io.sockets.in(roomName).emit('initAlienPosition', alien.position)
-                tick(roomName)
-                tickAlien(roomName)
+                setTimeout(() =>{
+                    tick(roomName)
+                    tickAlien(roomName)
+                }, 10000)
+               
             }
            console.log("room", room)
            console.log("players", players)
@@ -188,6 +199,7 @@ async function createMainServer(){
             let roomName = makeGameCode(5)
             socketRooms[socket.id] = roomName
             socket.emit('gameCode', roomName)
+            console.log(roomName)
             socket.join(roomName)
             players[socket.id] = {
                 pacman: new Pacman({
@@ -199,7 +211,8 @@ async function createMainServer(){
                     y:0,
                     z:0,
                 }),
-                playerNumber: 1
+                playerNumber: "One",
+                color: 'violet'
             }
             
 
@@ -220,6 +233,9 @@ async function createMainServer(){
             if(stopEverything){
                 return
             }
+            if(endCondition){
+                clearInterval(intervalId)
+            }
             if(alien instanceof Alien){
                 
                 alien.getRandomPosition()
@@ -235,6 +251,25 @@ async function createMainServer(){
         const intervalId = setInterval(() =>{
             if(stopEverything){
                 return
+            }
+            if(endCondition){
+                let winnerKey
+                for(const keys in players){
+                    if(!players[keys].pacman.isGhost){
+                        winnerKey = key
+                    }
+                }
+                io.sockets.in(roomName).emit('gameEnd', winnerKey)
+                clearInterval(intervalId)
+            }
+            let endConditionCounter = 0
+            for(const key in players){
+                if(players[key].pacman.isGhost){
+                    endConditionCounter++
+                }
+            }
+            if(endConditionCounter === 3){
+                endCondition = true
             }
             //handleGhostMovement
             if(ghost instanceof Ghost){
@@ -287,7 +322,7 @@ async function createMainServer(){
                                 alien.position.z = 0
                                 playerPacman.isGhost = true
                                 stopEverything = false
-                            },20000)
+                            },15000)
                         }
                     }
                 }
@@ -322,7 +357,7 @@ async function createMainServer(){
                                     alien.position.z = 0
                                     player.isGhost = true
                                     stopEverything = false
-                                },20000)
+                                },15000)
                             } else {    
                                 player.collisionWithPacman = true
                                 player2.collisionWithPacman = true
